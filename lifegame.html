@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>lifegame</title>
+    <script type="text/javascript" src="jquery-1.8.3.min.js"></script>
+    <style type="text/css">
+        table, td, th {
+            border: 1px #333300 solid;
+        }
+        td {
+            width: 5px;
+            height: 5px;
+        }
+        .dead {
+            background-color: white;
+        }
+        .live {
+            background-color: gray;
+        }
+        input {
+            width: 3em;
+        }
+    </style>
+</head>
+<body>
+<button id="startButton">Start</button>
+<button id="stopButton">Stop</button>
+rows<input id="rows" type="text" value="50" />
+cols<input id="cols" type="text" value="50" />
+interval(ms)<input id="interval" type="text" value="300" />
+<button id="resetButton">Reset</button>
+<table id="board">
+</table>
+<script type="text/javascript">
+(function () {
+    var Board = function() {
+        this.cells = {};
+        timer: "";
+    };
+    Board.prototype = {
+        start: function() {
+            var interval = $('#interval').val() || 300;
+            this.timer = setInterval(
+                (function(self) {
+                    return function() {self.next();}
+                }(this)), interval);
+        },
+        stop: function() {
+            if (this.timer) {
+                clearInterval(this.timer);
+            }
+        },
+        next: function() {
+            var newCells = {}, self = this;
+            $('#board').find('td').each(function() {
+                newCells[this.id] = self.survived(this.id) ? 'live' : 'dead';
+            });
+            this.refresh(newCells);
+        },
+        survived: function(id) {
+            var count = this.countOfLiveStateNeighbour(id);
+            return (this.cells[id] === 'live' && (count === 2 || count === 3))
+                || (this.cells[id] === 'dead' && count === 3);
+        },
+        countOfLiveStateNeighbour: function(id) {
+            var idrow = Number(id.split('-')[0]),
+                idcol = Number(id.split('-')[1]),
+                lives = 0;
+            if (this.isLiveCell(idrow - 1, idcol - 1)) lives++;
+            if (this.isLiveCell(idrow - 1, idcol)) lives++;
+            if (this.isLiveCell(idrow - 1, idcol + 1)) lives++;
+            if (this.isLiveCell(idrow, idcol - 1)) lives++;
+            if (this.isLiveCell(idrow, idcol + 1)) lives++;
+            if (this.isLiveCell(idrow + 1, idcol - 1)) lives++;
+            if (this.isLiveCell(idrow + 1, idcol)) lives++;
+            if (this.isLiveCell(idrow + 1, idcol + 1)) lives++;
+            return lives;
+        },
+        isLiveCell: function(row, col) {
+            return this.cells[row + '-' + col] && 
+                this.cells[row + '-' + col] === 'live';
+        },
+        refresh: function(newCells) {
+            for (var c in newCells) {
+                if (!newCells.hasOwnProperty(c)) continue;
+                if (this.cells[c] === newCells[c]) continue;
+                $('#' + c).toggleClass('dead live');
+            }
+            this.cells = newCells;
+        },
+        reset: function() {
+            this.stop();
+            var self = this;
+            self.colls = {};
+            $('#board').off('click.toggleState');
+            $('#board').empty().append(function() {
+                var x = $('#cols').val(), 
+                    y = $('#rows').val(), 
+                    rows = [];
+                for (var i = 0; i < y; i++) {
+                    var td = [];
+                    for (var j = 0; j < x; j++) {
+                        var id = i + '-' + j
+                        td.push('<td class="dead" id="' + id + '"></td>');
+                        self.cells[id] = "dead";
+                    }
+                    rows.push('<tr>' + td.join('') + '</tr>');
+                }
+                return $(rows.join(''));
+            }).on('click.toggleState', 'td', function() {
+                var $el = $(this);
+                if ($el.hasClass('dead')) {
+                    self.cells[$el.attr('id')] = "live";
+                } else {
+                    self.cells[$el.attr('id')] = "dead";
+                }
+                $el.toggleClass('dead live');
+            });
+        }
+    };
+    $(function() {
+        var board = new Board();
+        board.reset();
+        $('#resetButton').on('click', function() {board.reset();});
+        $('#startButton').on('click', function() {board.start();});
+        $('#stopButton').on('click', function() {board.stop();});
+    });
+}());
+</script>
+</body>
+</html>
